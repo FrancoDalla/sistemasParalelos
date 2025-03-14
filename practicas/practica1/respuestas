@@ -1,0 +1,43 @@
+1)_El algoritmo fib.c resuelve la serie de Fibonacci, para un número N dado, utilizando dos métodos:
+recursivo e iterativo. Analice los tiempos de ejecución de ambos métodos ¿Cuál es más rápido? ¿Por
+qué?
+Nota: ejecute con N=1..50.
+
+El iterativo es el más rapido. Si se corren con numeros pequeños como del 1 al 10. En ocasiones ocurre que los tiempos dan similares o incluso que gana el recursivo.
+A partir de numeros como 30 se puede empezar a percibir a simple vista que el recursivo se tarda más y, a partir de el numero 40, el recursivo logra resultados que superan el segundo.
+La solución recursiva tiene un tiempo de ejecución de orden o(2^n) mientras que la iterativa es de orden O(n).
+Al empezar la ejecución con números grandes la función iterativa hace dos llamadas nuevas a si misma. Lo que crea un arbol de llamadas en los que, ademas, se repiten muchas llamadas repetidas para los mismos valores.
+Esto termina haciendo que la funcion recalcule valores de forma redundante en cada rama y termina siendo muy ineficiente.
+Por otro lado en la solución iterativa se utilizan variables para calcular el siguiente valor de fibonacci en uan secuencia. Por lo que termina necesitando O(n) operaciones. Ademas no se hace trabajo redundante por lo que este termina siendo más eficiente.
+
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+2)_El algoritmo funcion.c resuelve, para un x dado, la siguiente sumatoria [VER SUMATORIA]
+El algoritmo compara dos alternativas de solución ¿Cual es mas rápida y por qué?
+
+Tenemos dos formas de resolución de la funcion. Por un lado una calcula primero el resultado de la cuenta y luego itera sumando al resultado el valor que siempre va a aparecer y resta el numero actual de iteración.
+
+///
+
+27         double fx = 2 * (( (x*x*x) + (3*x*x) + (3*x) + 2 ) / ( (x*x) + 1));
+28         for(i=0;i<cant;i++){
+29                 resultado += fx - i;
+30         }
+
+///
+
+Si vemos esto nos damos cuenta que en 27 se realizo un calculo bastante complejo una vez y, luego, en el for lo unico que se va repitiendo es una resta.
+
+Por otro lado en la otra solución tenemos que en resultado se va guardando el resultado de la operación completa por lo que, en cada iteración, se repiten todas las cuentas que estan involucradas en la funcion.
+
+///
+
+38         for(i=0;i<cant;i++){
+39                 resultado += 2 * ( ( (x*x*x) + (3*x*x) + (3*x) + 2 ) / ( (x*x) + 1) ) - i>
+40         }
+
+///
+
+En esta vemos que en cada iteración se realiza el calculo de toda la cuenta. Por lo que la cantidad de operaciones que efectua la primer solución es de i restas.
+mientras que la otra hace toda la funcion i veces.s
