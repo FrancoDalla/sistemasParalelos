@@ -18,26 +18,44 @@ El algoritmo compara dos alternativas de solución ¿Cual es mas rápida y por q
 
 Tenemos dos formas de resolución de la funcion. Por un lado una calcula primero el resultado de la cuenta y luego itera sumando al resultado el valor que siempre va a aparecer y resta el numero actual de iteración.
 
-///
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 27         double fx = 2 * (( (x*x*x) + (3*x*x) + (3*x) + 2 ) / ( (x*x) + 1));
 28         for(i=0;i<cant;i++){
 29                 resultado += fx - i;
 30         }
 
-///
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 Si vemos esto nos damos cuenta que en 27 se realizo un calculo bastante complejo una vez y, luego, en el for lo unico que se va repitiendo es una resta.
 
 Por otro lado en la otra solución tenemos que en resultado se va guardando el resultado de la operación completa por lo que, en cada iteración, se repiten todas las cuentas que estan involucradas en la funcion.
 
-///
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 38         for(i=0;i<cant;i++){
 39                 resultado += 2 * ( ( (x*x*x) + (3*x*x) + (3*x) + 2 ) / ( (x*x) + 1) ) - i>
 40         }
 
-///
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 En esta vemos que en cada iteración se realiza el calculo de toda la cuenta. Por lo que la cantidad de operaciones que efectua la primer solución es de i restas.
 mientras que la otra hace toda la funcion i veces.s
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+3)_Investigue en la documentación del compilador o a través de Internet qué opciones de optimización
+ofrece el compilador gcc (flag O). Compile y ejecute el algoritmo matrices.c, el cual resuelve una
+multiplicación de matrices de NxN. Explore los diferentes niveles de optimización para distintos
+tamaños de matrices. ¿Qué optimizaciones aplica el compilador? ¿Cuál es la ganancia respecto a la
+versión sin optimización del compilador? ¿Cuál es la ganancia entre los distintos niveles?
+
+
+Algunas de las opciones que otorga el compilador de GCC con el parametro -O son:
+	>O0(sin optimización): Este nivel de optimización desactiva casi todas las optimizaciones. Haciendo que el codigo compile rapido y de forma simple. Facilitando depuración pero dejando una ejecución del programa que no sera eficiente. (Esta es la que funciona por defecto al utilizar solo -o)
+	>O1(optimización básica): Realiza optimizaciones simples sin aumentar el tiempo de compilación de manera significativa. EStas incluyen eliminación de codigo innecesario, reordenación de instrucciones, entre otras cosas. Este nivel busca generar código eficiente sn gran costo en tiempo de compilación.
+	>02(optimización "mas agresiva"): Este nivel aplica optimizaciones más avanzadas que mejoran el rendimiento sin aumentar el tamaño del código de manera significativa. Algunas de estas incluyen la unificación de variables, mejora de bucles, propagación de constantes, entre otros.
+	>03(optimización máxima): Este es el nivel "mas alto" de optimización. Incluye cosas como unrolling de bucles, vectorizado de código y la paralelización de ciertos procesos. SIn embargo, este nivel puede aumentar el tamaño del código y puede hacer que algunos programas pierdan legibilidad o se vuelvan más dificiles de depurar.
+	>0fast(optimización para velocidad máxima): Similar a 03, pero también habilita algunas optimizaciones que no son del todo segura. COmo eliminación de comprobaciones de desbordamiento en aritmética y el uso de intrinsecos especificos de hardware.
+	>0s(optimización para tamaño): Optimiza el código para reducir el tamaño del binario generado. Ideal para cosas como sistemas embebidos.
+	>oz(optimizaciónm máxima para tamaño): Realiza un esfuerzo aún mayor por minimizar el tamaño del codigo.
