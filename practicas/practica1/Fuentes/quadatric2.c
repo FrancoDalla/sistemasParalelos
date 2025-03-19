@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define TIMES 100
-#define N 10000000
+#define TIMES 1500
+#define N 100
 
 #define A 1.0
 #define B -4.0000000

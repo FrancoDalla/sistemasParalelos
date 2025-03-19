@@ -59,3 +59,55 @@ Algunas de las opciones que otorga el compilador de GCC con el parametro -O son:
 	>0fast(optimización para velocidad máxima): Similar a 03, pero también habilita algunas optimizaciones que no son del todo segura. COmo eliminación de comprobaciones de desbordamiento en aritmética y el uso de intrinsecos especificos de hardware.
 	>0s(optimización para tamaño): Optimiza el código para reducir el tamaño del binario generado. Ideal para cosas como sistemas embebidos.
 	>oz(optimizaciónm máxima para tamaño): Realiza un esfuerzo aún mayor por minimizar el tamaño del codigo.
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+4)_Dada la ecuación cuadrática: x2 − 4.0000000 x + 3.9999999 = 0, sus raíces son r1 = 2.000316228 y r2 =
+1.999683772 (empleando 10 dígitos para la parte decimal).
+    a. El algoritmo quadratic1.c computa las raíces de esta ecuación empleando los tipos de datos
+    float y double. Compile y ejecute el código. ¿Qué diferencia nota en el resultado?
+
+    b. El algoritmo quadratic2.c computa las raíces de esta ecuación, pero en forma repetida. Compile
+    y ejecute el código variando la constante TIMES. ¿Qué diferencia nota en la ejecución?
+
+    c. El algoritmo quadratic3.c computa las raíces de esta ecuación, pero en forma repetida. Compile
+    y ejecute el código variando la constante TIMES. ¿Qué diferencia nota en la ejecución? ¿Qué
+    diferencias puede observar en el código con respecto a quadratic2.c?
+
+
+a.
+    Hay diferencia entre los resultados esperables de los que da el codigo quadratic1.c
+    con float: 
+        r1 = 2.00000 // r2 = 2.00000
+    con double:
+        r1 = 2.00032 // r2 = 1.99968 #En este los numeros son más similares al esperado
+
+b.
+    
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+5)_Analice el algoritmo matrices.c. ¿Dónde cree que se producen demoras? ¿Cómo podría optimizarse el
+código? Al menos, considere los siguientes aspectos:
+    o Explotación de localidad de datos a través de reorganización interna de matrices A, B o C
+    (según corresponda).
+
+    o El uso de Setters y getters es una buena práctica en la programación orientada a objetos.
+    ¿Tiene sentido usarlos en este caso? ¿cuál es su impacto en el rendimiento?
+
+    o ¿Hay expresiones en el cómputo que pueden refactorizarse para no ser computadas en
+    forma repetida?
+
+    o En lugar de ir acumulando directamente sobre la posición C[i,j] de la matriz resultado (línea
+    72), pruebe usar una variable local individual y al finalizar el bucle más interno, asigne su
+    valor a C[i,j]. ¿Esta modificación impacta en el rendimiento? ¿Por qué?
+
+Combine las mejoras que haya encontrado para obtener una solución optimizada y compare los
+tiempos con la solución original para diferentes tamaños de matrices.
+
+
+El uso de getters y setters, en caso de utilizarlos en una situación como esta en un lenguaje de programación orientado a objetos, generaria sobrecarga de llamadas a funciones. Lo que reduciría la eficiencia del código.
+
+Por lo visto cambiar el codigo e ir acumulando directamente sobre una variable local individual en vez de la posición c[i, j] de la matriz mejoraría el rendimiento.
+Investigando se supone que con la solución sin variable local se estaria accediendo y escribiendo el valor en memoria ram cada vez que se itera. Mientras que por el otro se trabajaria con un registro. Pero me falta información de momento. 
+
