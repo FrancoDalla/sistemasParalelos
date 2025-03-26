@@ -15,7 +15,7 @@ double dwalltime()
 /****************************************************************/
 
 int main(int argc, char *argv[]){
-  double x=2;
+ double x=2;
  
   double timetick, timeend;
   double resultado;
