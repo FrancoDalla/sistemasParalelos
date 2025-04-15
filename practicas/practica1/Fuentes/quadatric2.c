@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define TIMES 100
+#define TIMES 200
 #define N 10000000
 
 #define A 1.0
