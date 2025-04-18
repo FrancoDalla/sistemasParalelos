@@ -37,12 +37,13 @@ int main(int argc, char *argv[]){
 	int i, j, k, n,t;
 	pthread_attr_t attr;
 	double timetick;
-	pthread_t hilos[t];
 	pthread_attr_init(&attr);
 
 	/*Agregar despues validacion de argumentos*/
 	n = atoi(argv[1]);
 	t = atoi(argv[2]);
+
+	pthread_t hilos[t];
 
 	/*alocacion de matrices */
 	a = (double*) malloc(sizeof(double) * n);
@@ -62,7 +63,6 @@ int main(int argc, char *argv[]){
 	int inicio = 0;
 
 	/*Inicializacion de los struct */
-	if(t)
 	for(i = 0; i < t; i++){
         rangos[i].inicio = inicio;
         rangos[i].fin = inicio + tamaño_base -1 + (i < extras ? 1: 0);
