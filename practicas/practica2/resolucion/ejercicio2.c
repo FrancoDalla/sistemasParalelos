@@ -12,10 +12,12 @@ y T={2,4,8}. Analice el rendimiento.
 
 double dwalltime();
 void initmatrix(double *matrix, int n, int transpose, int value);
-void multmatrix(void *ptr);
+void * multmatrix(void *ptr);
 void blkmul(double *ablk, double *bblk, double *cblk);
 
-double *a, *b, *c;
+double *a;
+double *b;
+double *c;
 int n,t, bs;
 
 typedef struct {
@@ -37,7 +39,9 @@ int main(int argc, char *argv[]){
     pthread_attr_init(&attr);
 
     Rango rangos[t];
-    int cantidad = (n * n) / t;
+
+    int bloques_por_hilo = bs / t;
+    int bloques = n*n / bs;
 
     /*Reserva de memoria para las matrices */
     a = (double *) malloc(n * n * sizeof(double));
@@ -50,12 +54,14 @@ int main(int argc, char *argv[]){
     initmatrix(b, n, 1, 1);
 
     timetick = dwalltime();
+
     int aux = 0;
+
     for(i = 0; i < t; i++){
-        rangos[i].inicio = aux;
-        aux = aux + cantidad;
+        rangos[i].inicio = i * bloques_por_hilo;
+        aux += bloques_por_hilo;
         rangos[i].fin = aux;
-        pthread_create(&hilos[i], &attr,multmatrix(), &rangos[i]);
+        pthread_create(&hilos[i], &attr,multmatrix, &rangos[i]);
     }
 
     for(i = 0; i < t; i++){
@@ -66,6 +72,40 @@ int main(int argc, char *argv[]){
 
     printf("Se tardo : %f segundos \n",
         time);
+
+    printf("Impresion de la matriz a: \n");
+
+    for(i = 0; i < n; i++){
+        for(int j = 0; j < n; j++){
+            printf("%f ",
+                a[i + j * n]);
+        }
+        printf("\n");
+    }
+
+    printf("Impresion de la matriz b: \n");
+
+    for(i = 0; i < n; i++){
+        for(int j = 0; j < n; j++){
+            printf("%f ",
+                b[i + j * n]);
+        }
+        printf("\n");
+    }
+
+    printf("Impresion de la matriz c: \n");
+
+    for(i = 0; i < n; i++){
+        for(int j = 0; j < n; j++){
+            printf("%f ",
+                c[i * j + n]);
+        }
+        printf("\n");
+    }
+
+    free(a);
+    free(b);
+    free(c);
 
     return 0;
 }
@@ -103,7 +143,7 @@ void initmatrix(double *matrix, int n, int transpose, int value){
     }
 }
 
-void multmatrix(void *ptr){
+void * multmatrix(void *ptr){
     Rango *rango = (Rango *)ptr;
     int first = rango ->inicio, last = rango ->fin;
     int i, j, k;
@@ -117,5 +157,13 @@ void multmatrix(void *ptr){
 }
 
 void blkmul(double *ablk, double *bblk, double *cblk){
+    int i, j, k;
 
+    for (i = 0; i < bs; i++){
+        for(j = 0; j < bs; j++){
+            for(k = 0; k < bs; k++){
+                cblk[i * n + j] += ablk[i * n + k] * bblk[j * n + k];
+            }
+        }
+    }
 }
