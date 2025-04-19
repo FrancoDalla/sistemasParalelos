@@ -43,6 +43,8 @@ int main(int argc, char *argv[]){
     double timetick = dwalltime();
 
     for(int i = 0; i < t; i++){
+
+        printf("El hilo con id %d quedara con una carga de trabajo de: %d\n",i,(trabajo_actual / hilos_actual));
         rangos[i].id = i;
         rangos[i].inicio = aux;
         aux += trabajo_actual / hilos_actual;
