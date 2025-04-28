@@ -3,8 +3,8 @@
 #include <sys/time.h>
 #include <omp.h>
 
-#define DBL_MAX 1.7976931348623157e+308
-#define DBL_MIN 2.2250738585072014e-308
+#define DBL_MAX 2.2250738585072014e-308
+#define DBL_MIN -2.2250738585072014e-308
 
 double dwalltime();
 void matmulblks_and_calculate_scalar(double *a, double *b, double *c);
@@ -91,14 +91,30 @@ int main(int argc, char *argv[]) {
     */
 
     // Cálculo de A*B + Obtención de MinA, MinB, MaxA, MaxB, PromA, PromB.
-    #pragma omp parallel
+    #pragma omp parallel private(i,j,k,ii,jj,kk)
     {
-        matmulblks_and_calculate_scalar(a,b,matriz_ab);
+        #pragma omp for reduction(+:prom_a, prom_b) reduction(max:max_a, max_b) reduction(min:min_a, min_b)
+        for(i = 0; i < n; i++){
+            for(j = 0; j < n; j++){
+                double val_a = a[i*n+j];
+                double val_b = b[i*n+j];
 
-        #pragma omp barrier
+                prom_a += val_a;
+                prom_b += val_b;
+
+                if(val_a > max_a) max_a = val_a;
+                if(val_a < min_a) min_a = val_a;
+
+                if(val_b > max_b) max_b = val_b;
+                if(val_b < min_b) min_b = val_b;
+            }
+        }
 
         #pragma omp single
         {
+            printf("Maximo a y b : %f %f\n", max_a, max_b);
+            printf("minimo a y b : %f %f \n", min_a, min_b);
+            printf("prom_a y prom_b : %f %f\n",prom_a, prom_b);
             prom_a = prom_a / (n*n);
             prom_b = prom_b / (n*n);
             escalar = (max_a * max_b - min_a * min_b) / (prom_a * prom_b);
@@ -117,6 +133,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
     timetick = dwalltime() - timetick;
 
     /*
