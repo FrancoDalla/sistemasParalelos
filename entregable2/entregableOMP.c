@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     */
 
     // Cálculo de A*B + Obtención de MinA, MinB, MaxA, MaxB, PromA, PromB.
-    #pragma omp parallel private(i,j,k,ii,jj,kk)
+    #pragma omp parallel private(i,j,k)
     {
         #pragma omp for reduction(+:prom_a, prom_b) reduction(max:max_a, max_b) reduction(min:min_a, min_b)
         for(i = 0; i < n; i++){
@@ -118,14 +118,19 @@ int main(int argc, char *argv[]) {
             prom_a = prom_a / (n*n);
             prom_b = prom_b / (n*n);
             escalar = (max_a * max_b - min_a * min_b) / (prom_a * prom_b);
+            printf("escalar: %f \n",escalar);
         }
 
+        /*Multiplicacion a * b */
+        matmulblks(a, b, matriz_ab);
         // Calcular la transposición de B
         transpose(b, b_trans);
 
+        #pragma omp barrier
         // Cálculo de C*B_t.
         matmulblks(c, b_trans, matriz_cbt);
 
+        #pragma omp barrier
         // Cálculo de R.
         for(i = 0; i < n; i++){
             for(j = 0; j < n; j++){
