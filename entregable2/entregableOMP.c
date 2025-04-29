@@ -7,10 +7,7 @@
 #define DBL_MIN -2.2250738585072014e-308
 
 double dwalltime();
-void matmulblks_and_calculate_scalar(double *a, double *b, double *c);
-void blkmul_getscalar(double *ablk, double *bblk, double *cblk, int first_row, int first_column);
 void transpose(double *m, double *mt);
-void matmulblks(double *a, double *b, double *c);
 void blkmul(double *ablk, double *bblk, double *cblk);
 
 
@@ -67,7 +64,7 @@ int main(int argc, char *argv[]) {
 
     /*Pongo el valor de la cantidad de hilos, convertir a pasaje por parametro */
     int num_threads = 4;
-    omp_set_num_threads(num_threads);
+    //omp_set_num_threads(num_threads);
 
     /*
         Inicialización de matrices.
@@ -90,9 +87,9 @@ int main(int argc, char *argv[]) {
         R = ( escalar * [A*B] + [C*B_t].
     */
 
-    // Cálculo de A*B + Obtención de MinA, MinB, MaxA, MaxB, PromA, PromB.
     #pragma omp parallel private(i,j,k)
     {
+        /*Obtención de MinA, MinB, MaxA, MaxB, PromA, PromB */
         #pragma omp for reduction(+:prom_a, prom_b) reduction(max:max_a, max_b) reduction(min:min_a, min_b)
         for(i = 0; i < n; i++){
             for(j = 0; j < n; j++){
@@ -110,28 +107,40 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        /*Un solo hilo ejecuta esto */
         #pragma omp single
         {
-            printf("Maximo a y b : %f %f\n", max_a, max_b);
-            printf("minimo a y b : %f %f \n", min_a, min_b);
-            printf("prom_a y prom_b : %f %f\n",prom_a, prom_b);
             prom_a = prom_a / (n*n);
             prom_b = prom_b / (n*n);
             escalar = (max_a * max_b - min_a * min_b) / (prom_a * prom_b);
-            printf("escalar: %f \n",escalar);
         }
 
         /*Multiplicacion a * b */
-        matmulblks(a, b, matriz_ab);
+        #pragma omp for nowait schedule(static)
+        for(i = 0; i < n; i += bs){
+            for(j = 0; j < n; j += bs){
+                for(k = 0; k < n; k += bs){
+                    blkmul(&a[i*n+k], &b[k+j*n],&matriz_ab[i*n+j]);
+                }
+            }
+        }
         // Calcular la transposición de B
         transpose(b, b_trans);
 
         #pragma omp barrier
-        // Cálculo de C*B_t.
-        matmulblks(c, b_trans, matriz_cbt);
 
-        #pragma omp barrier
-        // Cálculo de R.
+        /*Calculo de c * b_transpuesta */
+        #pragma omp for schedule(static)
+        for(i = 0; i < n; i += bs){
+            for(j = 0; j < n; j += bs){
+                for(k = 0; k < n; k += bs){
+                    blkmul(&c[i*n+k], &b_trans[k+j*n], &matriz_cbt[i*n+j]);
+                }
+            }
+        }
+
+        /*Calculo de R */
+        #pragma omp for nowait schedule(static)
         for(i = 0; i < n; i++){
             for(j = 0; j < n; j++){
                 r[i*n+j] = escalar * matriz_ab[i*n+j] + matriz_cbt[i*n+j];
@@ -187,72 +196,6 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-/* Multiplicación de matrices utilizando bloques. Para A x B y conseguir el valor escalar. */
-void matmulblks_and_calculate_scalar(double *a, double *b, double *c){
-    int i, j, k;
-    for(i = 0; i < n; i += bs){
-        for(j = 0; j < n;j += bs){
-            for(k = 0; k < n; k += bs) {
-                blkmul_getscalar(&a[i*n+k], &b[k+j*n], &c[i*n+j], j==0, i==0);
-            }
-        }
-    }
-}
-
-/* Multiplicación de los bloques y obtener valores para el valor escalar */
-void blkmul_getscalar(double *ablk, double *bblk, double *cblk, int first_row, int first_column) {
-    int i, j, k;
-    for (i = 0; i < bs; i++) {
-        for (j = 0; j < bs; j++){
-            // Obtención de MinA, MaxA, PromA
-                #pragma omp critical
-                {
-                    if (first_row) {
-                        double val_a = ablk[i*n+j];
-                        if (val_a > max_a) max_a = val_a;
-                        if (val_a < min_a) min_a = val_a;
-                        prom_a += val_a;
-                    }
-                }
-                // Obtención de MinB, MaxB, PromB
-                #pragma omp critical
-                {
-                    if (first_column) {
-                        double val_b = bblk[i+j*n];
-                        if (val_b > max_b) max_b = val_b;
-                        if (val_b < min_b) min_b = val_b;
-                        prom_b += val_b;
-                    }
-                }
-            for(k = 0; k < bs; k++){
-                // Calculo A*B
-                cblk[i*n+j] += ablk[i*n+k] * bblk[k+j*n];
-            }
-        }
-    }
-}
-
-void transpose(double *m, double *m_trans) {
-    int j, i;
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < n; j++) {
-            m_trans[i + j * n] = m[i * n + j];
-        }
-    }
-}
-
-/* Multiplicación de matrices utilizando bloques. Para B_t x C */
-void matmulblks(double *a, double *b, double *c) {
-    int i, j, k;
-    for(i = 0; i < n; i += bs){
-        for(j = 0; j < n; j += bs){
-            for(k = 0; k < n; k += bs) {
-                blkmul(&a[i*n+k],&b[k+j*n],&c[i*n+j]);
-            }
-        }
-    }
-}
-
 /* Multiplicación de los bloques y obtener valores para el valor escalar */
 void blkmul(double *ablk, double *bblk, double *cblk) {
     int i, j, k;
@@ -273,4 +216,13 @@ double dwalltime()
 	gettimeofday(&tv,NULL);
 	sec = tv.tv_sec + tv.tv_usec/1000000.0;
 	return sec;
+}
+
+void transpose(double *m, double *m_trans) {
+    int j, i;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            m_trans[i + j * n] = m[i * n + j];
+        }
+    }
 }
