@@ -231,7 +231,7 @@ void *laburar(void *ptr)
 	pthread_mutex_unlock(&cont_escalar_mutex);
 
 	// Transponer b en b_trans
-	for (int idx = start_idx; idx < end_idx; idx++) {
+	for (int idx = start_idx * BS; idx < end_idx ; idx++) {
 		// Calcular indices de la matriz a calcular
 		i = (idx / n);
 		j = (idx % n);

@@ -12,7 +12,7 @@ void blkmul(double *ablk, double *bblk, double *cblk);
 
 
 // Como se nos indicó, declaramos variables globales para evitar usar parámetros.
-int n = 0, bs = 32;
+int n = 0, bs = 32; int num_threads;
 double prom_a = 0.0, prom_b = 0.0, escalar = 0.0;
 double max_a = DBL_MIN, max_b = DBL_MIN;
 double min_a = DBL_MAX, min_b = DBL_MAX;
@@ -26,10 +26,11 @@ int main(int argc, char *argv[]) {
     double timetick;
     int verificacion = 0;
 
-    if(argc < 2 || argc > 4){
+    if(argc < 2 || argc > 5){
         fprintf(stderr, "Uso %s N [BS] [verificacion]\n", argv[0]);
         fprintf(stderr, "N: Tamaño matriz.\n");
         fprintf(stderr, "BS: Tamaño de los bloques, por defecto 32(x32).\n");
+        fprintf(stderr, "T : Cantidad de hilos\n");
         fprintf(stderr, "verificacion: Si es 1 o mayor activa la verificación de los calculos.\n");
         exit(1);
     } else {
@@ -37,7 +38,9 @@ int main(int argc, char *argv[]) {
         if (argc >= 3)
             bs = atoi(argv[2]);
         if (argc == 4)
-            verificacion = atoi(argv[3]);
+            num_threads = atoi(argv[3]);
+        if (argc == 5)
+            verificacion = atoi(argv[4]);
     }
     // Verificación de input
 
@@ -63,8 +66,7 @@ int main(int argc, char *argv[]) {
     double * matriz_cbt = malloc(n*n * sizeof(double));
 
     /*Pongo el valor de la cantidad de hilos, convertir a pasaje por parametro */
-    int num_threads = 4;
-    //omp_set_num_threads(num_threads);
+    omp_set_num_threads(num_threads);
 
     /*
         Inicialización de matrices.
@@ -181,7 +183,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
+    printf("Para el calculo con N: %d hilos: %d y tamaño de bloque: %d\n",n,num_threads,bs);
     printf("Tiempo de ejecución del calculo: %f\n", timetick);
 
     // Liberando memoria por si acaso.
