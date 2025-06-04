@@ -16,7 +16,7 @@ void transpose(double *m, double *mt);
 void blkmul(double *ablk, double *bblk, double *cblk);
 void alocar_memoria_maestro();
 void alocar_memoria_trabajador();
-void inicializar_matriz(double *matriz, double valor);
+void inicializar_matrices();
 
 double *a;
 double *b, *bt;
@@ -54,10 +54,20 @@ int main(int argc, char *argv[]){
 
         if(identificador == MASTER){
             alocar_memoria_maestro();
+            inicializar_matrices();
         }
         else{
             alocar_memoria_trabajador()
         }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        MPI_Bcast(b, sizeof(double) * matriz_tamaño, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+        transpose(b, bt);
+
+        MPI_Scatter(a, sizeof(double) * carga_trabajo, MPI_DOUBLE, a, carga_trabajo, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+        MPI_Scatter(c, sizeof(double) * carga_trabajo, MPI_DOUBLE, c, carga_trabajo, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+
 
     MPI_Finalize();
 
@@ -103,6 +113,8 @@ void alocar_memoria_maestro(){
     r = (double * ) malloc(sizeof(double) * matriz_tamaño);
     ab = (double *) malloc(sizeof(double) * matriz_tamaño);
     cbt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    bt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    b = (double *) malloc(sizeof(double) * matriz_tamaño);
 }
 
 void alocar_memoria_trabajador(){
@@ -110,12 +122,20 @@ void alocar_memoria_trabajador(){
     r = (double * ) malloc(sizeof(double) * carga_trabajo);
     ab = (double *) malloc(sizeof(double) * carga_trabajo);
     cbt = (double *) malloc(sizeof(double) * carga_trabajo);
+    bt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    b = (double *) malloc(sizeof(double) * matriz_tamaño);
 }
 
-void inicializar_matriz(double *matriz, double valor){
-    for(int i = 0; i < n; i++){
-        for(int j=0;j<n;j++){
-            matriz[i*n+j] = valor;
-        }
-    }
+void inicializar_matrices(){
+   	int i,j;
+    for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			a[i * n + j] = j;
+			c[i * n + j] = j;
+			b[i + j * n] = j;
+			ab[i * n + j] = 0.0;
+			cbt[i * n + j] = 0.0;
+			r[i * n + j] = 0.0;
+		}
+	}
 }
