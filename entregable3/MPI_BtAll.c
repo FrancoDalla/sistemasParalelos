@@ -69,6 +69,7 @@ int main(int argc, char *argv[]){
         MPI_Scatter(c, sizeof(double) * carga_trabajo, MPI_DOUBLE, c, carga_trabajo, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
 
 
+
     MPI_Finalize();
 
     printf("Soy el proceso %d, adios\n",identificador);
@@ -139,3 +140,16 @@ void inicializar_matrices(){
 		}
 	}
 }
+
+
+/*
+ * BARRIER
+ * Si soy master, calculo tiempo.
+ * SCATTER A
+ * SCATTER C
+ * BCAST B
+ * GATHER
+ * Si soy master, calculo tiempo.
+ *
+ * Cal
+ */
