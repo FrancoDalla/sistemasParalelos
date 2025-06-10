@@ -25,8 +25,10 @@ double *b, *bt;
 double *c;
 double *ab;
 double *cbt;
-double max_a,min_a,promedio_a;
-double max_b,min_b,promedio_b;
+double suma_local_a = 0;
+double suma_local_b = 0;
+double promedio_a;
+double promedio_b;
 double escalar;
 double *r;
 int n;
@@ -36,15 +38,17 @@ int matriz_tamaño;
 int carga_trabajo;
 int strip_size;
 int actual_a, actual_b;
-
+double maximos[2] = { DBL_MIN, DBL_MIN };
+double minimos[2] = { DBL_MAX, DBL_MAX };
+double maximo[2];
+double minimo[2];
+MPI_Request requests[11];
 
 int main(int argc, char *argv[]){
     int i, j;
     n = atoi(argv[1]);
     matriz_tamaño = n * n;
 
-    max_a = DBL_MIN; max_b = DBL_MIN;
-    min_a = DBL_MAX, min_b = DBL_MIN;
     promedio_a = 0; promedio_b = 0;
 
     MPI_Init(&argc, &argv);
@@ -73,18 +77,18 @@ int main(int argc, char *argv[]){
 
         /*Calculo de minimo, maximo y promedio para A */
         for(i = 0; i < strip_size; i++){
-            for(j = 0; j < n + j++){
+            for(j = 0; j < n; j++){
                 actual_a = a[i*n+j];
 
-                if(actual_a > max_a){
-                    max_a = actual_a;
+                if(actual_a > maximos[0]){
+                    maximos[0] = actual_a;
                 }
 
-                if(actual_a < min_a){
-                    min_a = actual_a;
+                if(actual_a < minimos[0]){
+                    minimos[0] = actual_a;
                 }
 
-                promedio_a += actual_a;
+                suma_local_a += actual_a;
 
             }
         }
@@ -95,33 +99,43 @@ int main(int argc, char *argv[]){
         for(i = inicio; i < fin; i++){
             for(j = 0; j < n; j++){
                 actual_b = b[i*n + j];
-                if(actual_b > max_b){
-                    max_b = actual_b;
+                if(actual_b > maximos[1]){
+                    maximos[1] = actual_b;
                 }
 
-                if(actual_b < min_b){
-                    min_b = actual_b;
+                if(actual_b < minimos[1]){
+                    minimos[1] = actual_b;
                 }
 
-                promedio_b += actual_b;
+                suma_local_b += actual_b;
             }
         }
 
-        MPI_Reduce(&min_a, &min_a, 1, MPI_DOUBLE, MPI_MIN, MASTER, MPI_COMM_WORLD);
-        MPI_Reduce(&min_b, &min_b,1,MPI_DOUBLE, MPI_MIN, MASTER, MPI_COMM_WORLD);
-        MPI_Reduce(&promedio_a, &promedio_a, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-        MPI_Reduce(&promedio_b, &promedio_b, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+        MPI_Ireduce(maximos, maximo, 2, MPI_DOUBLE, MPI_MAX, MASTER, MPI_COMM_WORLD, &requests[5]);
+        MPI_Ireduce(minimos, minimo, 2, MPI_DOUBLE, MPI_MIN, MASTER, MPI_COMM_WORLD, &requests[6]);
+        MPI_Ireduce(&suma_local_a, &promedio_a, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD, &requests[7]);
+        MPI_Ireduce(&suma_local_b, &promedio_b, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD,&requests[8]);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         if(identificador == MASTER){
             promedio_a = promedio_a / matriz_tamaño;
             promedio_b = promedio_b / matriz_tamaño;
-
-            escalar = (max_a * max_b - min_a * min_b)/(promedio_a * promedio_b);
+            escalar = (maximo[0] * maximo[1] - minimo[0] * minimo[1])/(promedio_a * promedio_b);
         }
 
+        if(identificador == MASTER)
+        {
+            printf("EL ESCALAR QUEDO: %f\n", escalar);
+        }
 
     MPI_Finalize();
-
+    free(a);
+    free(b);
+    free(c);
+    free(ab);
+    free(cbt);
+    free(bt);
     return 0;
 }
 
@@ -164,13 +178,16 @@ void alocar_memoria_maestro(){
     cbt = (double *) malloc(sizeof(double) * matriz_tamaño);
     bt = (double *) malloc(sizeof(double) * matriz_tamaño);
     b = (double *) malloc(sizeof(double) * matriz_tamaño);
+    c = (double *) malloc(sizeof(double) * matriz_tamaño);
 }
 
 void alocar_memoria_trabajador(){
-    a = (double *) malloc(sizeof(double) * carga_trabajo);
-    r = (double * ) malloc(sizeof(double) * carga_trabajo);
-    ab = (double *) malloc(sizeof(double) * carga_trabajo);
-    cbt = (double *) malloc(sizeof(double) * carga_trabajo);
+    a = (double *) malloc(sizeof(double) * strip_size * n);
+    r = (double * ) malloc(sizeof(double) * strip_size * n);
+    ab = (double *) malloc(sizeof(double) * strip_size * n);
+    cbt = (double *) malloc(sizeof(double) * strip_size * n);
+    c = (double *) malloc(sizeof(double) * strip_size * n);
+
     bt = (double *) malloc(sizeof(double) * matriz_tamaño);
     b = (double *) malloc(sizeof(double) * matriz_tamaño);
 }
