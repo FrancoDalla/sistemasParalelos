@@ -42,7 +42,7 @@ double maximos[2] = { DBL_MIN, DBL_MIN };
 double minimos[2] = { DBL_MAX, DBL_MAX };
 double maximo[2];
 double minimo[2];
-MPI_Request requests[11];
+MPI_Request requests[15];
 
 int main(int argc, char *argv[]){
     int i, j;
@@ -68,9 +68,9 @@ int main(int argc, char *argv[]){
         MPI_Barrier(MPI_COMM_WORLD);
 
 
-        MPI_Bcast(b, sizeof(double) * matriz_tamaño, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
-        MPI_Scatter(a, sizeof(double) * (n * strip_size) , MPI_DOUBLE, a, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
-        MPI_Scatter(c, sizeof(double) * (n * strip_size), MPI_DOUBLE, c, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+        MPI_Bcast(b, matriz_tamaño, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+        MPI_Scatter(a, n * strip_size , MPI_DOUBLE, a, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+        MPI_Scatter(c, n * strip_size, MPI_DOUBLE, c, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
 
         /*Cada proceso transpone la matriz para el mismo */
         transpose(b, bt);
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]){
         MPI_Ireduce(&suma_local_a, &promedio_a, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD, &requests[7]);
         MPI_Ireduce(&suma_local_b, &promedio_b, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD,&requests[8]);
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Waitall(4, &requests[5], MPI_STATUSES_IGNORE);
 
         if(identificador == MASTER){
             promedio_a = promedio_a / matriz_tamaño;
@@ -209,7 +209,7 @@ void inicializar_matrices_maestro(){
 void inicializar_matrices_trabajador(){
     int i,j;
     for(i = 0; i < strip_size; i++){
-        for(j = 0; j < strip_size; j++){
+        for(j = 0; j < n; j++){
             ab[i*n+j] = 0.0;
             cbt[i*n+j] = 0.0;
             r[i*n+j] = 0.0;
