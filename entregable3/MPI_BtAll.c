@@ -157,19 +157,18 @@ int main(int argc, char *argv[]){
         /*CALCULO DE C * Bt */
         matmulblks(c, bt, cbt, n, strip_size);
 
-        comm_times[4] = MPI_Wtime();
         /*Esperar datos pendientes para el escalar */
-        MPI_Waitall(4, &requests[3], MPI_STATUSES_IGNORE);
-        comm_times[5] = MPI_Wtime();
-
         if(identificador == MASTER){
+            comm_times[4] = MPI_Wtime();
+            MPI_Waitall(4,&requests[3], MPI_STATUSES_IGNORE);
+            comm_times[5] = MPI_Wtime();
+
             promedio_a = promedio_a / matriz_tamaño;
             promedio_b = promedio_b / matriz_tamaño;
             escalar = (maximo[0] * maximo[1] - minimo[0] * minimo[1])/(promedio_a * promedio_b);
         }
 
         comm_times[6] = MPI_Wtime();
-        MPI_Barrier(MPI_COMM_WORLD);
 
         MPI_Ibcast(&escalar, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[7]);
 
