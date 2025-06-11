@@ -1,4 +1,4 @@
-/*Este codigo realiza el calculo haciendo que la transposición de B sea realizada por cada proceso individualmente */
+/*Este codigo realiza el calculo haciendo que la transposición de B sea realizada de forma compartida*/
 /*
     Ecuacion: R = ((maxA * maxB - MinA * MinB)/PromA * PromB) * [A * B] + C * Bt
 */
@@ -13,57 +13,47 @@
 #define MASTER 0
 
 double dwalltime();
-void transpose(double *m, double *mt, int n);
-void blkmul(double *ablk, double *bblk, double *cblk, int n);
-void recorrido_escalar(double *a, double *b,int n, int strip_size, int identificador,double *maximos,double *minimos,double *suma_local_a,double *suma_local_b);
-void matmulblks(double *a, double *b, double *c, int n, int strip_size);
-void sumar_vector_escalar(int strip_size, int n, int escalar, double *r, double *ab, double *cbt);
+void transpose(double *m, double *mt);
+void blkmul(double *ablk, double *bblk, double *cblk);
+void alocar_memoria_maestro();
+void alocar_memoria_trabajador();
+void inicializar_matrices_maestro();
+void inicializar_matrices_trabajador();
+void recorrido_escalar();
+void matmulblks(double *a, double *b, double *c);
+void sumar_vector_escalar();
 
+double *a;
+double *b, *bt, *b_local;
+double *c;
+double *ab;
+double *cbt;
+double suma_local_a = 0;
+double suma_local_b = 0;
+double promedio_a;
+double promedio_b;
+double escalar;
+double *r;
+int n;
+int procesos;
+int identificador;
+int matriz_tamaño;
+int strip_size;
+int actual_a, actual_b;
+double maximos[2] = { DBL_MIN, DBL_MIN };
+double minimos[2] = { DBL_MAX, DBL_MAX };
+double maximo[2];
+double minimo[2];
+MPI_Request requests[15];
+MPI_Status status;
+
+double comm_times[15], max_comm_times[15];
+double min_comm_times[15];
+double total_time, comm_time;
 
 int main(int argc, char *argv[]){
-    int i,j,k;
-    /*Declaracion de variables para los argumentos */
-    int n,verificacion;
-
-    verificacion = 0;
+    int i, j, verificacion;
     n = atoi(argv[1]);
-
-    /*Declaración de matrices */
-    double *a;
-    double *b, *bt;
-    double *c;
-    double *ab;
-    double *cbt;
-    double *r;
-
-    /*Declaración de valores asociados a la matrices */
-    int matriz_tamaño;
-    int strip_size;
-
-    /*Declaración de variables relacionadas al calculo del escalar */
-    double suma_local_a = 0;
-    double suma_local_b = 0;
-    double promedio_a;
-    double promedio_b;
-    double escalar;
-    int actual_a, actual_b;
-    double maximos[2] = { DBL_MIN, DBL_MIN };
-    double minimos[2] = { DBL_MAX, DBL_MAX };
-    double maximo[2];
-    double minimo[2];
-
-    /*Declaración de variables para datos de MPI*/
-    int procesos;
-    int identificador;
-
-    /*Declaración de variables por uso de comunicación asincrona*/
-    MPI_Request requests[15];
-    MPI_Status status;
-
-    /*Declaración de variables para medición del tiempo de ejecución */
-    double comm_times[15], max_comm_times[15];
-    double min_comm_times[15];
-    double total_time, comm_time;
 
     if(argc > 2){
         verificacion = atoi(argv[2]);
@@ -80,51 +70,14 @@ int main(int argc, char *argv[]){
         strip_size = n / procesos;
 
         if(identificador == MASTER){
-            /*Se reserva memoria para los datos del maestro */
-            a = (double *) malloc(sizeof(double) * matriz_tamaño);
-            b = (double *) malloc(sizeof(double) * matriz_tamaño);
-            ab = (double *) malloc(sizeof(double) * matriz_tamaño);
-            bt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            c = (double *) malloc(sizeof(double) * matriz_tamaño);
-            cbt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            r = (double * ) malloc(sizeof(double) * matriz_tamaño);
-
-            /*Asignación de valores a las variables de maestro*/
-            for (i = 0; i < n; i++) {
-                for (j = 0; j < n; j++) {
-                    a[i * n + j] = j;
-                    c[i * n + j] = j;
-                    b[i + j * n] = j;
-                    ab[i * n + j] = 0.0;
-                    cbt[i * n + j] = 0.0;
-                    r[i * n + j] = 0.0;
-                }
-            }
+            alocar_memoria_maestro();
+            inicializar_matrices_maestro();
         }
         else{
-            /*Se reserva memoria para los datos de los procesos worker */
-            a = (double *) malloc(sizeof(double) * strip_size * n);
-            r = (double * ) malloc(sizeof(double) * strip_size * n);
-            ab = (double *) malloc(sizeof(double) * strip_size * n);
-            cbt = (double *) malloc(sizeof(double) * strip_size * n);
-            c = (double *) malloc(sizeof(double) * strip_size * n);
-
-            bt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            b = (double *) malloc(sizeof(double) * matriz_tamaño);
-
-            /*Asignación de valores a las variables de los trabajadores*/
-            for(i = 0; i < strip_size; i++){
-                for(j = 0; j < n; j++){
-                    ab[i*n+j] = 0.0;
-                    cbt[i*n+j] = 0.0;
-                    r[i*n+j] = 0.0;
-                }
-            }
-
-
+            alocar_memoria_trabajador();
+            inicializar_matrices_trabajador();
         }
 
-        /*Se espera a que todos los procesos tengan los datos en condiciones */
         MPI_Barrier(MPI_COMM_WORLD);
 
         comm_times[0] = MPI_Wtime();
@@ -134,15 +87,14 @@ int main(int argc, char *argv[]){
         MPI_Iscatter(c, n * strip_size, MPI_DOUBLE, c, n * strip_size, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[2]);
 
 
-        /*Cada proceso transpone la matriz para el mismo */
+
         MPI_Wait(&requests[0], &status);
         comm_times[1] = MPI_Wtime();
+        transpose(b, b_local);
 
-        /*Cada proceso transpone la matriz B para el mismo*/
-        transpose(b, bt, n);
+        MPI_Iallgather(b_local, n * strip_size, MPI_DOUBLE, bt, n * n, MPI_DOUBLE, MPI_COMM_WORLD, &requests[9]);
 
-
-        recorrido_escalar(a, b, n, strip_size, identificador, maximos, minimos, &suma_local_a, &suma_local_b);
+        recorrido_escalar();
 
         comm_times[2] = MPI_Wtime();
         MPI_Ireduce(maximos, maximo, 2, MPI_DOUBLE, MPI_MAX, MASTER, MPI_COMM_WORLD, &requests[3]);
@@ -152,10 +104,11 @@ int main(int argc, char *argv[]){
         comm_times[3] = MPI_Wtime();
 
         /*Calculo de A X B */
-        matmulblks(a, b, ab, n, strip_size);
+        matmulblks(a, b, ab);
 
         /*CALCULO DE C * Bt */
-        matmulblks(c, bt, cbt, n, strip_size);
+        MPI_Wait(&requests[9], &status);
+        matmulblks(c, bt, cbt);
 
         comm_times[4] = MPI_Wtime();
         /*Esperar datos pendientes para el escalar */
@@ -173,12 +126,11 @@ int main(int argc, char *argv[]){
 
         MPI_Ibcast(&escalar, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[7]);
 
-        /*Se espera a que los procesos tengan el escalar */
         MPI_Wait(&requests[7], &status);
         comm_times[7] = MPI_Wtime();
 
         /*Calculo de  escalar a (AXB + CXBt)*/
-        sumar_vector_escalar(strip_size, n, escalar, r, ab, cbt);
+        sumar_vector_escalar();
 
         comm_times[8] = MPI_Wtime();
         MPI_Igather(r, strip_size * n, MPI_DOUBLE, r, strip_size * n, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[8]);
@@ -229,10 +181,10 @@ int main(int argc, char *argv[]){
     				}
     			}
     		}
-            printf("Los resultados en la matriz R son correctos\n");
         }
 
         /*La verdad que no se si estos numeros estan bien calculados :/ */
+        printf("Los resultados en la matriz R son correctos\n");
         printf("Tiempo de ejecucion: %f @@ Tiempo de comunicación: %f\n", total_time, comm_time);
     }
 
@@ -251,16 +203,17 @@ double dwalltime()
 	return sec;
 }
 
-void transpose(double *m, double *m_trans, int n) {
+void transpose(double *m, double *m_trans) {
     int j, i;
-    for (i = 0; i < n; i++) {
+
+    for (i = strip_size * identificador; i < (strip_size * identificador + 1); i++) {
         for (j = 0; j < n; j++) {
             m_trans[i + j * n] = m[i * n + j];
         }
     }
 }
 
-void blkmul(double *ablk, double *bblk, double *cblk, int n) {
+void blkmul(double *ablk, double *bblk, double *cblk) {
     int i, j, k;
     for (i = 0; i < BS; i++) {
         for (j = 0; j < BS; j++){
@@ -271,30 +224,70 @@ void blkmul(double *ablk, double *bblk, double *cblk, int n) {
     }
 }
 
-void matmulblks(double *a, double *b, double *c, int n, int strip_size){
+void matmulblks(double *a, double *b, double *c){
     int i, j, k, posicion_i, posicion_j;
     for(i = 0; i < strip_size; i+=BS){
         posicion_i = i * n;
         for(j = 0; j < n; j += BS){
             posicion_j = j * n;
             for(k = 0; k<n; k += BS){
-                blkmul(&a[posicion_i + k], &b[posicion_j + k], &c[posicion_i + j], n);
+                blkmul(&a[posicion_i + k], &b[posicion_j + k], &c[posicion_i + j]);
             }
         }
     }
 }
 
-void recorrido_escalar(
-    double *a, double *b,
-    int n, int strip_size, int identificador,
-    double *maximos,
-    double *minimos,
-    double *suma_local_a,
-    double *suma_local_b
-    )
-{
+void alocar_memoria_maestro(){
+    a = (double *) malloc(sizeof(double) * matriz_tamaño);
+    r = (double * ) malloc(sizeof(double) * matriz_tamaño);
+    ab = (double *) malloc(sizeof(double) * matriz_tamaño);
+    cbt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    bt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    b = (double *) malloc(sizeof(double) * matriz_tamaño);
+    c = (double *) malloc(sizeof(double) * matriz_tamaño);
+    b_local = (double *) malloc(sizeof(double) * strip_size * n);
+}
+
+void alocar_memoria_trabajador(){
+    a = (double *) malloc(sizeof(double) * strip_size * n);
+    r = (double * ) malloc(sizeof(double) * strip_size * n);
+    ab = (double *) malloc(sizeof(double) * strip_size * n);
+    cbt = (double *) malloc(sizeof(double) * strip_size * n);
+    c = (double *) malloc(sizeof(double) * strip_size * n);
+    b_local = (double *) malloc(sizeof(double) * strip_size * n);
+
+    bt = (double *) malloc(sizeof(double) * matriz_tamaño);
+    b = (double *) malloc(sizeof(double) * matriz_tamaño);
+
+}
+
+void inicializar_matrices_maestro(){
+   	int i,j;
+    for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			a[i * n + j] = j;
+			c[i * n + j] = j;
+			b[i + j * n] = j;
+			ab[i * n + j] = 0.0;
+			cbt[i * n + j] = 0.0;
+			r[i * n + j] = 0.0;
+		}
+	}
+}
+
+void inicializar_matrices_trabajador(){
     int i,j;
-    double actual_a, actual_b;
+    for(i = 0; i < strip_size; i++){
+        for(j = 0; j < n; j++){
+            ab[i*n+j] = 0.0;
+            cbt[i*n+j] = 0.0;
+            r[i*n+j] = 0.0;
+        }
+    }
+}
+
+void recorrido_escalar(){
+    int i,j;
 
     /*Calculo de minimo, maximo y promedio para A */
     for(i = 0; i < strip_size; i++){
@@ -309,7 +302,7 @@ void recorrido_escalar(
                 minimos[0] = actual_a;
             }
 
-            *suma_local_a += actual_a;
+            suma_local_a += actual_a;
 
         }
     }
@@ -328,12 +321,12 @@ void recorrido_escalar(
                 minimos[1] = actual_b;
             }
 
-            *suma_local_b += actual_b;
+            suma_local_b += actual_b;
         }
     }
 }
 
-void sumar_vector_escalar(int strip_size, int n, int escalar, double *r, double *ab, double *cbt){
+void sumar_vector_escalar(){
     int i, j, k;
 
     for(i = 0; i < strip_size; i++){
