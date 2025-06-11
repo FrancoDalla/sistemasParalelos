@@ -21,6 +21,7 @@ void inicializar_matrices_maestro();
 void inicializar_matrices_trabajador();
 void recorrido_escalar();
 void matmulblks(double *a, double *b, double *c);
+void sumar_vector_escalar();
 
 double *a;
 double *b, *bt;
@@ -47,8 +48,13 @@ MPI_Request requests[15];
 MPI_Status status;
 
 int main(int argc, char *argv[]){
-    int i, j;
+    int i, j, verificacion;
     n = atoi(argv[1]);
+
+    if(argc > 2){
+        verificacion = atoi(argv[2]);
+    }
+
     matriz_tamaño = n * n;
 
     promedio_a = 0; promedio_b = 0;
@@ -70,8 +76,8 @@ int main(int argc, char *argv[]){
 
 
         MPI_Ibcast(b, matriz_tamaño, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[0]);
-        MPI_Iscatter(a, n * strip_size , MPI_DOUBLE, a, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[1]);
-        MPI_Iscatter(c, n * strip_size, MPI_DOUBLE, c, sizeof(double) * (n * strip_size), MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[2]);
+        MPI_Iscatter(a, n * strip_size, MPI_DOUBLE, a, n * strip_size, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[1]);
+        MPI_Iscatter(c, n * strip_size, MPI_DOUBLE, c, n * strip_size, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[2]);
 
 
         /*Cada proceso transpone la matriz para el mismo */
@@ -80,15 +86,14 @@ int main(int argc, char *argv[]){
 
         recorrido_escalar();
 
-        MPI_Ireduce(maximos, maximo, 2, MPI_DOUBLE, MPI_MAX, MASTER, MPI_COMM_WORLD, &requests[5]);
-        MPI_Ireduce(minimos, minimo, 2, MPI_DOUBLE, MPI_MIN, MASTER, MPI_COMM_WORLD, &requests[6]);
-        MPI_Ireduce(&suma_local_a, &promedio_a, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD, &requests[7]);
-        MPI_Ireduce(&suma_local_b, &promedio_b, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD,&requests[8]);
+
+        MPI_Ireduce(maximos, maximo, 2, MPI_DOUBLE, MPI_MAX, MASTER, MPI_COMM_WORLD, &requests[3]);
+        MPI_Ireduce(minimos, minimo, 2, MPI_DOUBLE, MPI_MIN, MASTER, MPI_COMM_WORLD, &requests[4]);
+        MPI_Ireduce(&suma_local_a, &promedio_a, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD, &requests[5]);
+        MPI_Ireduce(&suma_local_b, &promedio_b, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD,&requests[6]);
 
 
-
-        /*De momento esta para darle tiempo al escalar, en realidad no es necesario */
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Waitall(4, &requests[3], MPI_STATUSES_IGNORE);
 
         if(identificador == MASTER){
             promedio_a = promedio_a / matriz_tamaño;
@@ -96,7 +101,21 @@ int main(int argc, char *argv[]){
             escalar = (maximo[0] * maximo[1] - minimo[0] * minimo[1])/(promedio_a * promedio_b);
         }
 
+        /*Calculo de A X B */
         matmulblks(a, b, ab);
+
+        /*CALCULO DE C * Bt */
+        matmulblks(c, bt, cbt);
+
+        MPI_Ibcast(&escalar, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[7]);
+
+        MPI_Wait(&requests[7], &status);
+
+        /*Calculo de  escalar a (AXB + CXBt)*/
+        sumar_vector_escalar();
+
+        MPI_Igather(r, strip_size * n, MPI_DOUBLE, r, strip_size * n, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[8]);
+        MPI_Wait(&requests[8], &status);
 
     MPI_Finalize();
 
@@ -110,6 +129,34 @@ int main(int argc, char *argv[]){
     free(ab);
     free(cbt);
     free(bt);
+
+    /* VERIFICACION */
+    if(identificador == MASTER)
+    {
+        if(verificacion >= 1){
+            if( escalar != 4.0){
+                fprintf(stderr, "El valor escalar no dio el resultado esperado de 4, el valor fue: %f\n", escalar);
+                exit(1);
+            }
+
+      		for (i = 0; i < n; i++) {
+    			for (j = 0; j < n; j++) {
+    				double ab = j * (n - 1.0) * n / 2.0;
+    				double cbt =
+    					(n - 1.0) * n * (2.0 * n - 1.0) / 6.0;
+    				double expected = 4.0 * ab + cbt;
+
+    				if (r[i * n + j] != expected) {
+    					fprintf(stderr,
+    						"Error en posición (%d,%d). Esperado valor: (%g), se obtuvo (%g).\n",
+    						i, j, expected, r[i * n + j]);
+    					exit(1);
+    				}
+    			}
+    		}
+        }
+        printf("Los resultados en la matriz R son correctos\n");
+    }
 
     return 0;
 }
@@ -152,7 +199,7 @@ void matmulblks(double *a, double *b, double *c){
         posicion_i = i * n;
         for(j = 0; j < n; j += BS){
             posicion_j = j * n;
-            for(k = 0; k<n; j += BS){
+            for(k = 0; k<n; k += BS){
                 blkmul(&a[posicion_i + k], &b[posicion_j + k], &c[posicion_i + j]);
             }
         }
@@ -245,6 +292,15 @@ void recorrido_escalar(){
     }
 }
 
+void sumar_vector_escalar(){
+    int i, j, k;
+
+    for(i = 0; i < strip_size; i++){
+        for(j = 0; j < n; j++){
+            r[i*n+j] = escalar * ab[i*n+j] + cbt[i*n+j];
+        }
+    }
+}
 /*
  * BARRIER
  * Si soy master, calculo tiempo.
