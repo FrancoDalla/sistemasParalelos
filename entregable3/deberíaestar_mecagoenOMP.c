@@ -39,7 +39,6 @@ int main(int argc, char *argv[])
 
 	int verificacion = 0;
 	MPI_Status status;
-	int cont[3] = { 0 };
 	MPI_Request requests[9];
 	// EN TEORÍA c debería hacer que todo sea 0 declarandolo de esta forma.
 	double commTimes[26] = { 0 };
@@ -68,9 +67,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+	MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
 
-	if (provided < MPI_THREAD_SERIALIZED) {
+	if (provided < MPI_THREAD_FUNNELED) {
 		fprintf(stderr, "Threading provisto por MPI no es suficiente");
 		exit(1);
 	}
@@ -134,14 +133,16 @@ int main(int argc, char *argv[])
 	commTimes[1] = MPI_Wtime();
 
 #pragma omp parallel default(shared) private(i, j, k)
-	{
+	{ // Inicio de la región paralela (OMP)
 // Transpuesta
-#pragma omp single
+#pragma omp barrier
+#pragma omp master
 		if (rank != COORDINATOR) {
 			commTimes[2] = MPI_Wtime();
 			MPI_Wait(&requests[0], &status);
 			commTimes[3] = MPI_Wtime();
 		}
+#pragma omp barrier
 #pragma omp for schedule(static)
 		for (i = (rank * stripSize); i < (rank * stripSize + stripSize);
 		     i++) {
@@ -150,26 +151,26 @@ int main(int argc, char *argv[])
 			}
 		}
 		// Comunicación de transpuesta
-#pragma omp critical
+#pragma omp barrier
+#pragma omp master
 		{
-			cont[0]++;
-			if (cont[0] == numThreads) {
-				commTimes[4] = MPI_Wtime();
-				MPI_Iallgather(b_trans, stripSize * n,
-					       MPI_DOUBLE, b_trans,
-					       stripSize * n, MPI_DOUBLE,
-					       MPI_COMM_WORLD, &requests[3]);
-				commTimes[5] = MPI_Wtime();
-			}
+			commTimes[4] = MPI_Wtime();
+			MPI_Iallgather(b_trans, stripSize * n, MPI_DOUBLE,
+				       b_trans, stripSize * n, MPI_DOUBLE,
+				       MPI_COMM_WORLD, &requests[3]);
+			commTimes[5] = MPI_Wtime();
 		}
+#pragma omp barrier
 
 /*Obtención de MinA, MinB, MaxA, MaxB, PromA, PromB */
-#pragma omp single
+#pragma omp barrier
+#pragma omp master
 		if (rank != COORDINATOR) {
 			commTimes[6] = MPI_Wtime();
 			MPI_Wait(&requests[1], &status);
 			commTimes[7] = MPI_Wtime();
 		}
+#pragma omp barrier
 #pragma omp for schedule(static) reduction(+ : sum_a) \
 	reduction(max : local_max[0]) reduction(min : local_min[0])
 		for (i = 0; i < stripSize; i++) {
@@ -184,12 +185,14 @@ int main(int argc, char *argv[])
 						       local_min[0];
 			}
 		}
-#pragma omp single
+#pragma omp barrier
+#pragma omp master
 		if (rank != COORDINATOR) {
 			commTimes[8] = MPI_Wtime();
 			MPI_Wait(&requests[0], &status);
 			commTimes[9] = MPI_Wtime();
 		}
+#pragma omp barrier
 #pragma omp for schedule(static) reduction(+ : sum_b) \
 	reduction(max : local_max[1]) reduction(min : local_min[1])
 		for (i = (stripSize * rank); i < (stripSize * rank) + stripSize;
@@ -206,27 +209,22 @@ int main(int argc, char *argv[])
 			}
 		}
 		// Comunicación de valores para el estadístico
-#pragma omp critical
+#pragma omp barrier
+#pragma omp master
 		{
-			cont[1]++;
-			if (cont[1] == numThreads) {
-				commTimes[10] = MPI_Wtime();
-				// Aparentemente MPI_SUM no funciona para vectores así que lo descompongo en dos reducciones.
-				MPI_Ireduce(&sum_a, &prom_a, 1, MPI_DOUBLE,
-					    MPI_SUM, COORDINATOR,
-					    MPI_COMM_WORLD, &requests[4]);
-				MPI_Ireduce(&sum_b, &prom_b, 1, MPI_DOUBLE,
-					    MPI_SUM, COORDINATOR,
-					    MPI_COMM_WORLD, &requests[5]);
-				MPI_Ireduce(local_max, max, 2, MPI_DOUBLE,
-					    MPI_MAX, COORDINATOR,
-					    MPI_COMM_WORLD, &requests[6]);
-				MPI_Ireduce(local_min, min, 2, MPI_DOUBLE,
-					    MPI_MIN, COORDINATOR,
-					    MPI_COMM_WORLD, &requests[7]);
-				commTimes[11] = MPI_Wtime();
-			}
+			commTimes[10] = MPI_Wtime();
+			// Aparentemente MPI_SUM no funciona para vectores así que lo descompongo en dos reducciones.
+			MPI_Ireduce(&sum_a, &prom_a, 1, MPI_DOUBLE, MPI_SUM,
+				    COORDINATOR, MPI_COMM_WORLD, &requests[4]);
+			MPI_Ireduce(&sum_b, &prom_b, 1, MPI_DOUBLE, MPI_SUM,
+				    COORDINATOR, MPI_COMM_WORLD, &requests[5]);
+			MPI_Ireduce(local_max, max, 2, MPI_DOUBLE, MPI_MAX,
+				    COORDINATOR, MPI_COMM_WORLD, &requests[6]);
+			MPI_Ireduce(local_min, min, 2, MPI_DOUBLE, MPI_MIN,
+				    COORDINATOR, MPI_COMM_WORLD, &requests[7]);
+			commTimes[11] = MPI_Wtime();
 		}
+#pragma omp barrier
 
 /*Multiplicacion a * b */
 #pragma omp for schedule(static)
@@ -242,34 +240,33 @@ int main(int argc, char *argv[])
 
 		// Esperar a las reducciones y hacer broadcast.
 
-#pragma omp critical
+#pragma omp barrier
+#pragma omp master
 		{
-			cont[2]++;
-			if (cont[2] == numThreads) {
-				if (rank == COORDINATOR) {
-					commTimes[12] = MPI_Wtime();
-					MPI_Wait(&requests[4], &status);
-					MPI_Wait(&requests[5], &status);
-					commTimes[13] = MPI_Wtime();
-					prom_a /= (n * n);
-					prom_b /= (n * n);
-					commTimes[14] = MPI_Wtime();
-					MPI_Wait(&requests[6], &status);
-					MPI_Wait(&requests[7], &status);
-					commTimes[15] = MPI_Wtime();
-					escalar = (max[0] * max[1] -
-						   min[0] * min[1]) /
-						  (prom_a * prom_b);
-				}
-				commTimes[16] = MPI_Wtime();
-				MPI_Ibcast(&escalar, 1, MPI_DOUBLE, COORDINATOR,
-					   MPI_COMM_WORLD, &requests[8]);
-				commTimes[17] = MPI_Wtime();
+			if (rank == COORDINATOR) {
+				commTimes[12] = MPI_Wtime();
+				MPI_Wait(&requests[4], &status);
+				MPI_Wait(&requests[5], &status);
+				commTimes[13] = MPI_Wtime();
+				prom_a /= (n * n);
+				prom_b /= (n * n);
+				commTimes[14] = MPI_Wtime();
+				MPI_Wait(&requests[6], &status);
+				MPI_Wait(&requests[7], &status);
+				commTimes[15] = MPI_Wtime();
+				escalar = (max[0] * max[1] - min[0] * min[1]) /
+					  (prom_a * prom_b);
 			}
+			commTimes[16] = MPI_Wtime();
+			MPI_Ibcast(&escalar, 1, MPI_DOUBLE, COORDINATOR,
+				   MPI_COMM_WORLD, &requests[8]);
+			commTimes[17] = MPI_Wtime();
 		}
+#pragma omp barrier
 
 		// Asegurarse que se tiene B Transpuesta y C.
-#pragma omp single
+#pragma omp barrier
+#pragma omp master
 		{
 			commTimes[18] = MPI_Wtime();
 			MPI_Wait(&requests[3], &status);
@@ -280,6 +277,7 @@ int main(int argc, char *argv[])
 				commTimes[21] = MPI_Wtime();
 			}
 		}
+#pragma omp barrier
 		/*Calculo de c * b_transpuesta */
 #pragma omp for schedule(static)
 		for (i = 0; i < stripSize; i += BS) {
@@ -294,12 +292,14 @@ int main(int argc, char *argv[])
 		}
 
 //Asegurar que se tiene el escalar
-#pragma omp single
+#pragma omp barrier
+#pragma omp master
 		if (rank != COORDINATOR) {
 			commTimes[22] = MPI_Wtime();
 			MPI_Wait(&requests[8], &status);
 			commTimes[23] = MPI_Wtime();
 		}
+#pragma omp barrier
 /*Calculo de R */
 #pragma omp for schedule(static)
 		for (i = 0; i < stripSize; i++) {
@@ -308,9 +308,9 @@ int main(int argc, char *argv[])
 					       matriz_cbt[i * n + j];
 			}
 		}
-	}
+	} // Fin de la región paralela (OMP)
 
-	// Se guarda R en el COORDINADOR (no se puede usar no-bloqueante porque si no puede terminar antes de tiempo el programa).
+	// Se guarda R en el COORDINADOR (no se puede usar no-bloqueante, porque si no puede terminarse antes de tiempo el programa).
 	commTimes[24] = MPI_Wtime();
 	MPI_Gather(r, stripSize * n, MPI_DOUBLE, r, stripSize * n, MPI_DOUBLE,
 		   COORDINATOR, MPI_COMM_WORLD);
@@ -402,4 +402,3 @@ void blkmul(double *ablk, double *bblk, double *cblk)
 		}
 	}
 }
-
