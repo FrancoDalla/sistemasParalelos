@@ -9,7 +9,7 @@
 
 #define DBL_MAX 2.2250738585072014e-308
 #define DBL_MIN -2.2250738585072014e-308
-#define BS 128
+#define BS 32
 #define MASTER 0
 
 double dwalltime();
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
     double *r;
 
     /*Declaración de valores asociados a la matrices */
-    int matriz_tamaño;
+    int matriz_tamano;
     int strip_size;
 
     /*Declaración de variables relacionadas al calculo del escalar */
@@ -63,13 +63,14 @@ int main(int argc, char *argv[]){
     /*Declaración de variables para medición del tiempo de ejecución */
     double comm_times[15], max_comm_times[15];
     double min_comm_times[15];
-    double total_time, comm_time;
+    double total_time;
+    double comm_time = 0;
 
     if(argc > 2){
         verificacion = atoi(argv[2]);
     }
 
-    matriz_tamaño = n * n;
+    matriz_tamano = n * n;
 
     promedio_a = 0; promedio_b = 0;
 
@@ -81,13 +82,13 @@ int main(int argc, char *argv[]){
 
         if(identificador == MASTER){
             /*Se reserva memoria para los datos del maestro */
-            a = (double *) malloc(sizeof(double) * matriz_tamaño);
-            b = (double *) malloc(sizeof(double) * matriz_tamaño);
-            ab = (double *) malloc(sizeof(double) * matriz_tamaño);
-            bt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            c = (double *) malloc(sizeof(double) * matriz_tamaño);
-            cbt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            r = (double * ) malloc(sizeof(double) * matriz_tamaño);
+            a = (double *) malloc(sizeof(double) * matriz_tamano);
+            b = (double *) malloc(sizeof(double) * matriz_tamano);
+            ab = (double *) malloc(sizeof(double) * matriz_tamano);
+            bt = (double *) malloc(sizeof(double) * matriz_tamano);
+            c = (double *) malloc(sizeof(double) * matriz_tamano);
+            cbt = (double *) malloc(sizeof(double) * matriz_tamano);
+            r = (double * ) malloc(sizeof(double) * matriz_tamano);
 
             /*Asignación de valores a las variables de maestro*/
             for (i = 0; i < n; i++) {
@@ -95,9 +96,6 @@ int main(int argc, char *argv[]){
                     a[i * n + j] = j;
                     c[i * n + j] = j;
                     b[i + j * n] = j;
-                    ab[i * n + j] = 0.0;
-                    cbt[i * n + j] = 0.0;
-                    r[i * n + j] = 0.0;
                 }
             }
         }
@@ -108,20 +106,8 @@ int main(int argc, char *argv[]){
             ab = (double *) malloc(sizeof(double) * strip_size * n);
             cbt = (double *) malloc(sizeof(double) * strip_size * n);
             c = (double *) malloc(sizeof(double) * strip_size * n);
-
-            bt = (double *) malloc(sizeof(double) * matriz_tamaño);
-            b = (double *) malloc(sizeof(double) * matriz_tamaño);
-
-            /*Asignación de valores a las variables de los trabajadores*/
-            for(i = 0; i < strip_size; i++){
-                for(j = 0; j < n; j++){
-                    ab[i*n+j] = 0.0;
-                    cbt[i*n+j] = 0.0;
-                    r[i*n+j] = 0.0;
-                }
-            }
-
-
+            bt = (double *) malloc(sizeof(double) * matriz_tamano);
+            b = (double *) malloc(sizeof(double) * matriz_tamano);
         }
 
         /*Se espera a que todos los procesos tengan los datos en condiciones */
@@ -129,7 +115,7 @@ int main(int argc, char *argv[]){
 
         comm_times[0] = MPI_Wtime();
 
-        MPI_Ibcast(b, matriz_tamaño, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[0]);
+        MPI_Ibcast(b, matriz_tamano, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[0]);
         MPI_Iscatter(a, n * strip_size, MPI_DOUBLE, a, n * strip_size, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[1]);
         MPI_Iscatter(c, n * strip_size, MPI_DOUBLE, c, n * strip_size, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[2]);
 
@@ -163,8 +149,8 @@ int main(int argc, char *argv[]){
             MPI_Waitall(4,&requests[3], MPI_STATUSES_IGNORE);
             comm_times[5] = MPI_Wtime();
 
-            promedio_a = promedio_a / matriz_tamaño;
-            promedio_b = promedio_b / matriz_tamaño;
+            promedio_a = promedio_a / matriz_tamano;
+            promedio_b = promedio_b / matriz_tamano;
             escalar = (maximo[0] * maximo[1] - minimo[0] * minimo[1])/(promedio_a * promedio_b);
         }
 
