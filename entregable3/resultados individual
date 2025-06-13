@@ -1,0 +1,52 @@
+nucleos=1 
+
+512
+Tiempo de ejecucion: 0.080543 @@ Tiempo de comunicación: 0.080543
+
+1024
+Tiempo de ejecucion: 0.700693 @@ Tiempo de comunicación: 0.700687
+
+
+2048
+Tiempo de ejecucion: 4.887532 @@ Tiempo de comunicación: 3.887532
+
+Para N 4096
+Tiempo de ejecucion: 35.025684 @@ Tiempo de comunicación: 34.552090
+
+
+NUCLEOS=2
+
+Para N 512
+Tiempo de ejecucion: 0.255151 @@ Tiempo de comunicación: 0.177759
+
+
+Para N 1024
+Tiempo de ejecucion: 1.293421 @@ Tiempo de comunicación: 1.048556
+
+
+Para N 2048
+Tiempo de ejecucion: 7.262831 @@ Tiempo de comunicación: 5.384552
+
+
+Para N 4096
+Tiempo de ejecucion: 44.537584 @@ Tiempo de comunicación: 30.377550
+
+NUCLEOS 4
+
+Para N 512
+Tiempo de ejecucion: 0.486267 @@ Tiempo de comunicación: 0.323685
+
+
+Para N 1024
+Tiempo de ejecucion: 1.642149 @@ Tiempo de comunicación: 1.368116
+
+
+Para N 2048
+Tiempo de ejecucion: 8.621467 @@ Tiempo de comunicación: 7.002511
+
+Para N 4096
+Tiempo de ejecucion: 41.615301 @@ Tiempo de comunicación: 31.132458
+
+
+
+(N={512, 1024, 2048, 4096}) , es decir, 1, 2 y 4 nodos, respectivamente
