@@ -63,7 +63,7 @@ int main(int argc, char *argv[]){
     MPI_Status status;
 
     /*Declaración de variables para medición del tiempo de ejecución */
-    double comm_times[15] = {0};
+    double comm_times[18] = {0};
     double total_time;
     double comm_time = 0;
     double local_time = 0;
@@ -161,25 +161,28 @@ int main(int argc, char *argv[]){
         }
 
         comm_times[8] = MPI_Wtime();
-
         MPI_Ibcast(&escalar, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[7]);
         comm_times[9] = MPI_Wtime();
 
         /*Se espera a que los procesos tengan el escalar */
+        comm_times[10] = MPI_Wtime();
         MPI_Wait(&requests[7], &status);
-        comm_times[7] = MPI_Wtime();
+        comm_times[11] = MPI_Wtime();
 
         /*Calculo de  escalar a (AXB + CXBt)*/
         sumar_vector_escalar(strip_size, n, escalar, r, ab, cbt);
 
+        comm_times[12] = MPI_Wtime();
         MPI_Igather(r, strip_size * n, MPI_DOUBLE, r, strip_size * n, MPI_DOUBLE, MASTER, MPI_COMM_WORLD, &requests[8]);
+        comm_times[13] = MPI_Wtime();
+
         if(identificador == MASTER){
-            comm_times[8] = MPI_Wtime();
+            comm_times[14] = MPI_Wtime();
             MPI_Wait(&requests[8], &status);
-            comm_times[9] = MPI_Wtime();
+            comm_times[15] = MPI_Wtime();
         }
 
-        for(i = 0; i < 9; i++){
+        for(i = 0; i < 15; i++){
             local_time += comm_times[i+1] - comm_times[i];
         }
 

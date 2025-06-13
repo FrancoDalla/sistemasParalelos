@@ -1,0 +1,70 @@
+1 NODO
+
+
+PARA N 512
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 0.138715 @@ Tiempo de comunicación: 0.010406
+
+
+PARA N 1024
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 0.700612 @@ Tiempo de comunicación: 0.077744
+
+
+
+PARA N 2048
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 4.976304 @@ Tiempo de comunicación: 0.601349
+
+PARA N 4096
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 38.655480 @@ Tiempo de comunicación: 4.799615
+
+
+@@ 2 NODO
+
+PARA N 512
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 0.325135 @@ Tiempo de comunicación: 0.016604
+
+
+PARA N 1024
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 1.273442 @@ Tiempo de comunicación: 0.074173
+
+
+
+PARA N 2048
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 6.124859 @@ Tiempo de comunicación: 0.368569
+
+
+PARA N 4096
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 35.495882 @@ Tiempo de comunicación: 2.175426
+
+
+
+@@@ 4 nodos
+
+PARA N 512
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 0.631930 @@ Tiempo de comunicación: 0.017787
+
+PARA N 1024
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 2.389108 @@ Tiempo de comunicación: 0.070455
+
+PARA N 2048
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 10.026710 @@ Tiempo de comunicación: 0.304934
+
+PARA N 4096
+Los resultados en la matriz R son correctos
+Tiempo de ejecucion: 43.696845 @@ Tiempo de comunicación: 1.336884
+
+
+
+
+
+(N={512, 1024, 2048, 4096}) , es decir, 1, 2 y 4 nodos, respectivamente

@@ -1,51 +1,53 @@
-nucleos=1 
+BT INDIVIDUAL
 
-512
-Tiempo de ejecucion: 0.080543 @@ Tiempo de comunicación: 0.080543
-
-1024
-Tiempo de ejecucion: 0.700693 @@ Tiempo de comunicación: 0.700687
-
-
-2048
-Tiempo de ejecucion: 4.887532 @@ Tiempo de comunicación: 3.887532
-
-Para N 4096
-Tiempo de ejecucion: 35.025684 @@ Tiempo de comunicación: 34.552090
-
-
-NUCLEOS=2
+@@@ 1 nodo
 
 Para N 512
-Tiempo de ejecucion: 0.255151 @@ Tiempo de comunicación: 0.177759
-
+Tiempo de ejecucion: 0.144748 @@ Tiempo de comunicación: 0.011935
 
 Para N 1024
-Tiempo de ejecucion: 1.293421 @@ Tiempo de comunicación: 1.048556
+Tiempo de ejecucion: 0.842820 @@ Tiempo de comunicación: 0.099227
 
 
 Para N 2048
-Tiempo de ejecucion: 7.262831 @@ Tiempo de comunicación: 5.384552
-
+Tiempo de ejecucion: 5.802004 @@ Tiempo de comunicación: 0.719473
 
 Para N 4096
-Tiempo de ejecucion: 44.537584 @@ Tiempo de comunicación: 30.377550
+Tiempo de ejecucion: 42.277104 @@ Tiempo de comunicación: 5.279009
 
-NUCLEOS 4
+@@@ 2 nodos
 
+Los resultados en la matriz R son correctos
 Para N 512
-Tiempo de ejecucion: 0.486267 @@ Tiempo de comunicación: 0.323685
+Tiempo de ejecucion: 0.261578 @@ Tiempo de comunicación: 0.013398
 
 
 Para N 1024
-Tiempo de ejecucion: 1.642149 @@ Tiempo de comunicación: 1.368116
+Tiempo de ejecucion: 1.350113 @@ Tiempo de comunicación: 0.081438
 
 
 Para N 2048
-Tiempo de ejecucion: 8.621467 @@ Tiempo de comunicación: 7.002511
+Tiempo de ejecucion: 7.698920 @@ Tiempo de comunicación: 0.477781
 
 Para N 4096
-Tiempo de ejecucion: 41.615301 @@ Tiempo de comunicación: 31.132458
+Tiempo de ejecucion: 50.980184 @@ Tiempo de comunicación: 3.183105
+
+
+
+@@@@ 4 nodos
+
+Para N 512
+Tiempo de ejecucion: 0.477302 @@ Tiempo de comunicación: 0.013374
+
+Para N 1024
+Tiempo de ejecucion: 1.924561 @@ Tiempo de comunicación: 0.058616
+
+
+Para N 2048
+Tiempo de ejecucion: 8.559635 @@ Tiempo de comunicación: 0.265860
+
+Para N 4096
+Tiempo de ejecucion: 44.951708 @@ Tiempo de comunicación: 1.403247
 
 
 
